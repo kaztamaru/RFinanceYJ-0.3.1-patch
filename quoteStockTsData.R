@@ -1,7 +1,10 @@
 #-----------------------------------------------------------------------------------------
 #  RFinanceYJ 0.3.1 downloaded from CRAN 7/1/2014
+#     My patch 7/1/2014
 #-----------------------------------------------------------------------------------------
 #API
+library(XML)
+library(xts)
 quoteStockTsData <- function(x, since=NULL,start.num=0,date.end=NULL,time.interval='daily')
 {
   time.interval <- substr(time.interval,1,1)
@@ -55,16 +58,20 @@ quoteTsData <- function(x,function.financialproduct,since,start.num,date.end,tim
   #end   <- (gsub("([0-9]{4,4})-([0-9]{2,2})-([0-9]{2,2})","&f=\\1&d=\\2&e=\\3",date.end))
   start <- (gsub("([0-9]{4,4})-([0-9]{2,2})-([0-9]{2,2})","&sy=\\1&sm=\\2&sd=\\3",since))
   end   <- (gsub("([0-9]{4,4})-([0-9]{2,2})-([0-9]{2,2})","&ey=\\1&em=\\2&ed=\\3",date.end))
-  
+
   if(!any(time.interval==c('d','w','m'))) stop("Invalid time.interval value")
   
   extractQuoteTable <- function(r,type){
-    if(type %in% c("fund","fx")){
+    #if(type %in% c("fund","fx")){
+    #  tbl <- r[[2]][[2]][[7]][[3]][[3]][[9]][[2]]
+    #}
+    #else{
+    #  tbl <- r[[2]][[2]][[7]][[3]][[3]][[10]][[2]]
+    #}
+    ErrorMessages <- try( tbl <- r[[2]][[2]][[7]][[3]][[3]][[11]][[2]], TRUE )
+    if(class(ErrorMessages)[1] == "try-error"){
       tbl <- r[[2]][[2]][[7]][[3]][[3]][[9]][[2]]
-    }
-    else{
-      tbl <- r[[2]][[2]][[7]][[3]][[3]][[10]][[2]]
-    }
+    }  
     return(tbl)
   }
   
@@ -72,10 +79,10 @@ quoteTsData <- function(x,function.financialproduct,since,start.num,date.end,tim
     start.num <- start.num + 1
     quote.table <- NULL
     quote.url <- paste('http://info.finance.yahoo.co.jp/history/?code=',x,start,end,'&p=',start.num,'&tm=',substr(time.interval,1,1),sep="")
-    
+  
     try( r <- xmlRoot(htmlTreeParse(quote.url,error=xmlErrorCumulator(immediate=F))), TRUE)
     if( is.null(r) ) stop(paste("Can not access :", quote.url))
-    
+
     #try( quote.table <- r[[2]][[1]][[1]][[16]][[1]][[1]][[1]][[4]][[1]][[1]][[1]], TRUE )
     try( quote.table <- extractQuoteTable(r,type), TRUE )
     
@@ -83,11 +90,11 @@ quoteTsData <- function(x,function.financialproduct,since,start.num,date.end,tim
       if( is.null(financial.data) ){
         stop(paste("Can not quote :", x))
       }else{
-        financial.data <- financial.data[order(financial.data$date),]
-        return(financial.data)
+         financial.data <- financial.data[order(financial.data$date),]
+         return(financial.data)
       }
     }
-    
+
     size <- xmlSize(quote.table)
     for(i in 2:size){
       financial.data <- rbind(financial.data,function.financialproduct(quote.table[[i]]))
